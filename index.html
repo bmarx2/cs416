@@ -1,7 +1,6 @@
 <html>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   
-  <button id="myButton">Next</button>
   <body>
     <h1> How Does Governmental Health Expenditure Improve Quality of Life? </h1>
   </body>
@@ -12,8 +11,115 @@
     This narrative visualization slideshow highlights the importance of governmental health spending to improve health related metrics including infant mortality,
     obesity rate, and life expectancy.
   </p>
-  const myButton = document.getElementById("myButton");
-  myButton.addEventListener("click", function() {
-  alert("Button clicked!"); 
-});
+  
+  <div id="btns">
+    <button id="prev">Prev</button>
+    <button class="scene" data-scene="0">1</button>
+    <button class="scene" data-scene="1">2</button>
+    <button class="scene" data-scene="2">3</button>
+    <button id="next">Next</button>
+  </div>
+
+  <svg id="chart" width="900" height="600"></svg>
+  <script>
+    const metrics = [
+      {key: "infantMort", label: "Infant mortality (per 1,000 births)", invert: true}
+      {key: "obesityPct", label: "Adult obesity %", invert: false}
+      {key: "lifeExp", label: "Life expectancy (years)", invert: false}];
+
+    const svg = d3.select('#chart');
+    const W = +svg.attr("width")
+    const H = +svg.attr("height");
+    const M = {top: 20, right: 20, bottom: 55, left: 80};
+    const borderW = W - M.left - M.right;
+    const borderH = H - M.top - M.bottom;
+    const x = d3.scaleLog().range([0, borderW]);
+    const y = d3.scaleLinear().range([borderH, 0]);
+    
+    const g = svg.append("g").attr("transform", 'translate(${M.left}, ${M.top)');
+    const gx = g.append("g").attr("transform", 'translate(0, ${borderH})');
+    const gy = g.append("g");
+    const dotsG = g.append("g");
+    
+    let color = null;
+    let scene = 0;
+    let data = [];
+
+    const COL = {
+      year: "Time",
+      country: "Country Name",
+      code: "Country Code",
+      region: "Region",
+      xval: "Current health expenditure per capita (current US$) [SH.XPD.CHEX.PC.CD]",
+      life: "Life expectancy at birth, total (years) [SP.DYN.LE00.IN]",
+      infant: "Mortality rate, infant (per 1,000 live births) [SP.DYN.IMRT.IN]",
+      obesity: "Male & Female Obesity Rate"};
+      
+    d3.csv("WDI Narrative Vizualization Full Stats.csv", d3.autoType).then(rows => {
+      data = rows
+      .filter(d => +d[COL.year] === 2016)
+      .map(d => ({
+        country: d[COL.country],
+        code: d[COL.code],
+        region: d[COL.region],
+        year: d[COL.year],
+        healthExpPC: +d[COL.xval],
+        lifeExp: +d[COL.life],
+        infantMort: +d[COL.infant],
+        obesityPct: +d[COL.obesity]}))
+
+      x.domain(d3.extent(data, d => d.healthExpPC));
+      const regions = Array.from(new Set(data.map(d => d.region)));
+      const pal = d3.schemeCategory10;
+      color = d3.scaleOrdinal(regions, pal);
+
+      gx.call(d3.axisBottom(x).ticks(10, "~s").tickFormat(v => "$" + d3.format(",.0f")(v)));
+      drawScene(true);
+      hookNav();
+    });
+
+    function drawScene(inital=false){
+      const def = METRICS[scene];
+      const extent = d3.extent(data, d => d[def.key]);
+      y.domain(def.invert ? [extent[1], extent[0]] : extent);
+
+      gy.transition().duration(initial?0:700).call(d3.axisLeft(y).ticks(8));
+      yLabel.text(def.label);
+
+      const sel = dotsG.selectAll("circle").data(data, d => d.code);
+
+      sel.enter().append("circle")
+        .attr("r", 4)
+        .attr("cx", d => x(d.healthExpPC))
+        .attr("cy", d => y(data.length ? data[0][METRICS[0].key : d[def.key]))
+        .attr("fill", d=> color(d.region))
+        .transition().duration(initial?0:700)
+        .attr("cy", d=> y(d[def.key]));
+      
+      sel.transition().duration(initial?0:700).ease(d3.easeCubcInOut)
+        .attr("cx", d => x(d.healthExpPC))
+        .attr("cy", d => y(d[def.key]))
+
+      sel.exit().remove();
+      setButtons();
+    }
+
+    function gotoScene(s){
+      const target = Math.max(0, Math.min(2, s));
+      if (target !== scene){ scene = target; drawScene(); }
+    }
+
+    function setButtons(){
+      document.getElementById("prev").disabled = (scene === 0);
+      document.getElementById("next").disabled = (scene === 2);
+    }
+
+    function hookNav() {
+      document.getElementById("prev").addEventListener("click", () => gotoScene(scene-1));
+      document.getElementById("next").addEventListener("click", () => gotoScene(scene+1));
+      document.querySelectorAll(".scene-btn").forEach(b => b.addEventListener("click", e => gotoScene(+e.currentTarget.dataset.scene)));
+    setButtons();
+    }
+  </script>
+  
 </html>
