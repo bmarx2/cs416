@@ -23,8 +23,8 @@
   <svg id="chart" width="900" height="600"></svg>
   <script>
     const metrics = [
-      {key: "infantMort", label: "Infant mortality (per 1,000 births)", invert: true}
-      {key: "obesityPct", label: "Adult obesity %", invert: false}
+      {key: "infantMort", label: "Infant mortality (per 1,000 births)", invert: true},
+      {key: "obesityPct", label: "Adult obesity %", invert: false},
       {key: "lifeExp", label: "Life expectancy (years)", invert: false}];
 
     const svg = d3.select('#chart');
@@ -35,9 +35,13 @@
     const borderH = H - M.top - M.bottom;
     const x = d3.scaleLog().range([0, borderW]);
     const y = d3.scaleLinear().range([borderH, 0]);
+
+    const xLabel = g.append("text").attr("x", iw/2).attr("y", ih + 40).attr("text-anchor", "middle");
+    const yLabel = g.append("text").attr("transform", "rotate(-90)").attr("x", -ih/2).attr("y", -55).attr("text-anchor", "middle");
+    xLabel.text("Health expenditure per capita (US$)");
     
-    const g = svg.append("g").attr("transform", 'translate(${M.left}, ${M.top)');
-    const gx = g.append("g").attr("transform", 'translate(0, ${borderH})');
+    const g = svg.append("g").attr("transform", `translate(${M.left}, ${M.top})`);
+    const gx = g.append("g").attr("transform", `translate(0, ${borderH})`);
     const gy = g.append("g");
     const dotsG = g.append("g");
     
@@ -54,9 +58,10 @@
       life: "Life expectancy at birth, total (years) [SP.DYN.LE00.IN]",
       infant: "Mortality rate, infant (per 1,000 live births) [SP.DYN.IMRT.IN]",
       obesity: "Male & Female Obesity Rate"};
-      
-    d3.csv("WDI Narrative Vizualization Full Stats.csv", d3.autoType).then(rows => {
-      data = rows
+
+    const data_url = https://github.com/bmarx2/cs416/blob/main/WDI%20Narrative%20Vizualization%20Full%20Stats.csv;
+    d3.csv(data_url, d3.autoType)
+      .then(rows => {data = rows
       .filter(d => +d[COL.year] === 2016)
       .map(d => ({
         country: d[COL.country],
@@ -79,7 +84,7 @@
     });
 
     function drawScene(inital=false){
-      const def = METRICS[scene];
+      const def = metrics[scene];
       const extent = d3.extent(data, d => d[def.key]);
       y.domain(def.invert ? [extent[1], extent[0]] : extent);
 
@@ -91,12 +96,11 @@
       sel.enter().append("circle")
         .attr("r", 4)
         .attr("cx", d => x(d.healthExpPC))
-        .attr("cy", d => y(data.length ? data[0][METRICS[0].key : d[def.key]))
         .attr("fill", d=> color(d.region))
         .transition().duration(initial?0:700)
         .attr("cy", d=> y(d[def.key]));
       
-      sel.transition().duration(initial?0:700).ease(d3.easeCubcInOut)
+      sel.transition().duration(initial?0:700).ease(d3.easeCubicInOut)
         .attr("cx", d => x(d.healthExpPC))
         .attr("cy", d => y(d[def.key]))
 
@@ -117,7 +121,7 @@
     function hookNav() {
       document.getElementById("prev").addEventListener("click", () => gotoScene(scene-1));
       document.getElementById("next").addEventListener("click", () => gotoScene(scene+1));
-      document.querySelectorAll(".scene-btn").forEach(b => b.addEventListener("click", e => gotoScene(+e.currentTarget.dataset.scene)));
+      document.querySelectorAll(".scene").forEach(b => b.addEventListener("click", e => gotoScene(+e.currentTarget.dataset.scene)));
     setButtons();
     }
   </script>
