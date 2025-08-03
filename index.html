@@ -2,18 +2,17 @@
 <html>
   <head>
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <title>CS416 Narrative Visualization: Health Spending Slideshow</title>
+    <title>Governmental Health Spending Slideshow</title>
   </head>
 
   <body>
-    <h1> How Does Governmental Health Expenditure Improve Quality of Life? </h1>
+    <h1>How Does Governmental Health Expenditure Improve Citizen Lifespan & Health?</h1>
 
     <p>
       Governments spend millions, billions, and even trillions of dollars to the improve the lives of their citizens. Much of the spending is 
       on research and development projects or defense contracts. While important issues it is unclear how important these topics are
-      to the health and wellbeing of the public. 
-      This narrative visualization slideshow highlights the importance of governmental health spending to improve health related metrics including infant mortality,
-      obesity rate, and life expectancy.
+      to the health and wellbeing of the public. This narrative visualization slideshow highlights the importance of governmental health spending
+      to improve health related metrics including infant mortality, obesity rate, and life expectancy.
     </p>
     
     <div id="btns">
@@ -42,6 +41,7 @@
       const borderW = W - M.left - M.right;
       const borderH = H - M.top - M.bottom;
       const iw = borderW, ih = borderH;
+
       const x = d3.scaleLog().range([0, borderW]);
       const y = d3.scaleLinear().range([borderH, 0]);
       
@@ -49,6 +49,7 @@
       const gx = g.append("g").attr("transform", `translate(0, ${borderH})`);
       const gy = g.append("g");
       const dotsG = g.append("g");
+      const legendG = svg.append("g").attr("transform", `translate(${W - M.right - 160}, ${M.top})`);
 
       const xLabel = g.append("text")
         .attr("x", iw/2).attr("y", ih + 40).attr("text-anchor", "middle")
@@ -59,6 +60,7 @@
       let color = null;
       let scene = 0;
       let data = [];
+      let regions = [];
 
       const COL = {
         year: "Time",
@@ -87,13 +89,34 @@
           .filter(d => d.region && d.healthExpPC > 0 && [d.lifeExp, d.infantMort, d.obesityPct].every(Number.isFinite));
 
         x.domain(d3.extent(data, d => d.healthExpPC));
-        const regions = Array.from(new Set(data.map(d => d.region)));
-        color = d3.scaleOrdinal(d3.schemeCategory10);
+        regions = Array.from(new Set(data.map(d => d.region))).sort();
+        color = d3.scaleOrdinal(regions, d3.schemeCategory10);
 
-        gx.call(d3.axisBottom(x).ticks(10, "~s").tickFormat(v => "$" + d3.format(",.0f")(v)));
+        gx.call(d3.axisBottom(x).ticks(6).tickFormat(d => "$" + d3.format("~s")(d)));
+
+        drawLegend();
         drawScene(true);
-        hookNav();
+        setupNavigation();
       });
+
+      function drawLegend(){
+        const row = legendG.selectAll("g").data(regions, d => d);
+        const enter = row.enter().append("g").attr("transform", (d,i) => `translate(0, ${i*18})`);
+        enter.append("rect").attr("width", 12).attr("height", 12).attr("rx", 2).attr("ry", 2).attr("fill", d => color(d));
+        enter.append("text").attr("x", 18).attr("y", 10).attr("font-size", 12).text(d => d);
+        row.exit().remove();
+      }
+
+      function tooltipText(d){
+        return (
+          d.country + "\n" +
+          "Region: " + d.region + "\n" +
+          "Health exp per cap: $" + d3.format(",.0f")(d.healthExpPC) + "\n" +
+          "Life expectancy: " + d3.format(".1f")(d.lifeExp) + " yrs\n" +
+          "Obesity: " + d3.format(".1f")(d.obesityPct) + " %\n" +
+          "Infant mortality: " + d3.format(".1f")(d.infantMort) + " / 1,000"
+        );
+      }
 
       function drawScene(initial=false){
         const def = metrics[scene];
@@ -105,16 +128,20 @@
 
         const sel = dotsG.selectAll("circle").data(data, d => d.code);
 
-        sel.enter().append("circle")
+        const entered = sel.enter().append("circle")
           .attr("r", 4)
           .attr("cx", d => x(d.healthExpPC))
-          .attr("cy", d => y(d[def.key]))  // start at final y
+          .attr("cy", d => y(d[def.key]))
           .attr("fill", d=> color(d.region))
           .attr("opacity", 0.9);
+
+        entered.append("title").text(d => tooltipText(d));
 
         sel.transition().duration(initial?0:700).ease(d3.easeCubicInOut)
           .attr("cx", d => x(d.healthExpPC))
           .attr("cy", d => y(d[def.key]));
+
+        sel.select("title").text(d => tooltipText(d));
 
         sel.exit().remove();
         setButtons();
@@ -130,7 +157,7 @@
         document.getElementById("next").disabled = (scene === 2);
       }
 
-      function hookNav() {
+      function setupNavigation() {
         document.getElementById("prev").addEventListener("click", () => gotoScene(scene-1));
         document.getElementById("next").addEventListener("click", () => gotoScene(scene+1));
         document.querySelectorAll(".scene").forEach(b => b.addEventListener("click", e => gotoScene(+e.currentTarget.dataset.scene)));
