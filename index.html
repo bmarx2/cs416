@@ -9,11 +9,11 @@
   </head>
 
   <body>
-    <h1>Health Spending and Outcomes — Brendan Marx</h1>
+    <h1>CS416 Health Spending and Outcomes - Brendan Marx</h1>
 
     <p>
       This narrative visualization slideshow explores how public health spending per person relates to infant mortality, adult obesity, and life expectancy.
-      Use the buttons to change slides and the “Quadrants” button to overlay spending/outcome thresholds.
+      <br> Use the buttons to change slides and the “Quadrants” button to overlay spending/outcome thresholds.
     </p>
     
     <div id="btns">
@@ -25,7 +25,7 @@
       <button id="toggle-quadrants">Quadrants</button>
     </div>
 
-    <svg id="chart" width="1000" height="600"></svg>
+    <svg id="chart" width="1120" height="600"></svg>
 
     <script>
       const metrics = [
@@ -47,7 +47,7 @@
       const svg = d3.select('#chart');
       const W = +svg.attr("width");
       const H = +svg.attr("height");
-      const RIGHT = 220;
+      const RIGHT = 280; 
       const M = {top: 20, right: 20, bottom: 55, left: 80};
       const iw = W - M.left - M.right - RIGHT;
       const ih = H - M.top - M.bottom;
@@ -124,6 +124,45 @@
         row.append("text").attr("x",18).attr("y",10).attr("font-size",12).text(d => d);
       }
 
+      function makeMultiline(selection, text){
+        const maxChars = 44; // approx width for 12px font in sidebar
+        const sentences = String(text).split(/(?<=[.?!])\s+/);
+        const lines = [];
+        sentences.forEach(s => {
+          const words = s.split(/\s+/);
+          let line = "";
+          words.forEach(w => {
+            const candidate = line ? line + " " + w : w;
+            if (candidate.length > maxChars) {
+              if (line) lines.push(line);
+              line = w;
+            } else {
+              line = candidate;
+            }
+          });
+          if (line) lines.push(line);
+        });
+        selection.selectAll("tspan").remove();
+        lines.forEach((ln, i) => {
+          selection.append("tspan")
+            .attr("x", 0)
+            .attr("dy", i === 0 ? 0 : 16)
+            .text(ln);
+        });
+      }
+
+      function initNote(){
+        noteG.selectAll("*").remove();
+        noteG.append("text").attr("x",0).attr("y",0).text("Slide Notes").attr("font-size",12).attr("font-weight","bold");
+        const t = noteG.append("text").attr("id","note-text").attr("x",0).attr("y",18).attr("font-size",12);
+        makeMultiline(t, slideNotes[scene]);
+      }
+
+      function updateNote(){
+        const t = d3.select("#note-text").attr("x",0).attr("y",18);
+        makeMultiline(t, slideNotes[scene]);
+      }
+
       function tooltipText(d){
         return (
           d.country + "\n" +
@@ -197,9 +236,9 @@
         const topY   = (0 + py) / 2;
         const botY   = (py + ih) / 2;
 
-        const goodTop = def.invert;      // for inverted slides, smaller metric = better and appears at top
-        const topHealth = goodTop ? "Good Health" : "Bad Health";
-        const botHealth = goodTop ? "Bad Health" : "Good Health";
+        const goodTop = def.invert;
+        const topHealth = goodTop ? "Good Health"  : "Bad Health";
+        const botHealth = goodTop ? "Bad Health"   : "Good Health";
 
         const labels = [
           { id:"tl", x:leftX,  y:topY, text:"Low Spending, "  + topHealth },
@@ -226,29 +265,6 @@
         xSplit = xDollar;
         ySplit = yValue;
         drawQuadrants();
-      }
-
-            function makeMultiline(selection, text){
-        const sentences = String(text).split(/(?<=[.?!])\s+/);
-        selection.selectAll("tspan").remove();
-        sentences.forEach((s, i) => {
-          selection.append("tspan")
-            .attr("x", 0)
-            .attr("dy", i === 0 ? 0 : 16)
-            .text(s);
-        });
-      }
-
-      function initNote(){
-        noteG.selectAll("*").remove();
-        noteG.append("text").attr("x",0).attr("y",0).text("Slide Notes").attr("font-size",12).attr("font-weight","bold");
-        const t = noteG.append("text").attr("id","note-text").attr("x",0).attr("y",18).attr("font-size",12);
-        makeMultiline(t, slideNotes[scene]);
-      }
-
-      function updateNote(){
-        const t = d3.select("#note-text").attr("x",0).attr("y",18);
-        makeMultiline(t, slideNotes[scene]);
       }
 
       function gotoScene(s){
