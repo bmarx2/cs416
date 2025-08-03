@@ -39,8 +39,9 @@
       const W = +svg.attr("width");
       const H = +svg.attr("height");
       const M = {top: 20, right: 20, bottom: 55, left: 80};
-      const iw = W - M.left - M.right;
-      const ih = H - M.top - M.bottom;
+      const borderW = W - M.left - M.right;
+      const borderH = H - M.top - M.bottom;
+      const iw = borderW, ih = borderH;
       const x = d3.scaleLog().range([0, borderW]);
       const y = d3.scaleLinear().range([borderH, 0]);
       
