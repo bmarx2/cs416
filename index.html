@@ -2,11 +2,11 @@
 <html>
   <head>
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <title>Governmental Health Spending Slideshow</title>
+    <title>CS416 Narrative Visualization: Health Spending Slideshow</title>
   </head>
 
   <body>
-    <h1>How Does Governmental Health Expenditure Improve Citizen Lifespan & Health?</h1>
+    <h1>How Does Governmental Health Expenditure Improve Quality of Life?</h1>
 
     <p>
       Governments spend millions, billions, and even trillions of dollars to the improve the lives of their citizens. Much of the spending is 
@@ -27,9 +27,14 @@
 
     <script>
       const metrics = [
-        { key: "infantMort", label: "Infant mortality (per 1,000 births)", invert: true },
+        { key: "infantMort", label: "Infant mortality (per 1,000 births)", invert: false },
         { key: "obesityPct", label: "Adult obesity (%)", invert: false },
         { key: "lifeExp",    label: "Life expectancy (years)", invert: false }
+      ];
+      const slideNotes = [
+        "Slide 1 annotation",
+        "Slide 2 annotation",
+        "Slide 3 annotation"
       ];
 
       const data_url = "WDI Narrative Vizualization Full Stats.csv";
@@ -37,8 +42,9 @@
       const svg = d3.select('#chart');
       const W = +svg.attr("width");
       const H = +svg.attr("height");
+      const RIGHT = 220;
       const M = {top: 20, right: 20, bottom: 55, left: 80};
-      const borderW = W - M.left - M.right;
+      const borderW = W - M.left - M.right - RIGHT;
       const borderH = H - M.top - M.bottom;
       const iw = borderW, ih = borderH;
 
@@ -49,7 +55,10 @@
       const gx = g.append("g").attr("transform", `translate(0, ${borderH})`);
       const gy = g.append("g");
       const dotsG = g.append("g");
-      const legendG = svg.append("g").attr("transform", `translate(${W - M.right - 160}, ${M.top})`);
+
+      const sidebarX = M.left + borderW + 24;
+      const legendG = svg.append("g").attr("transform", `translate(${sidebarX}, ${M.top})`);
+      const noteG   = svg.append("g").attr("transform", `translate(${sidebarX}, ${M.top + 20 + 18*8})`);
 
       const xLabel = g.append("text")
         .attr("x", iw/2).attr("y", ih + 40).attr("text-anchor", "middle")
@@ -88,23 +97,41 @@
           }))
           .filter(d => d.region && d.healthExpPC > 0 && [d.lifeExp, d.infantMort, d.obesityPct].every(Number.isFinite));
 
-        x.domain(d3.extent(data, d => d.healthExpPC));
+        // --- minimal change: pad and nice the log domain so very small values (e.g., $12) aren't pinned at 0
+        const xExtent = d3.extent(data, d => d.healthExpPC);
+        const minX = xExtent[0], maxX = xExtent[1];
+        const lowerPad = Math.pow(10, Math.floor(Math.log10(minX)));
+        x.domain([Math.min(10, lowerPad), maxX]).nice();
+
         regions = Array.from(new Set(data.map(d => d.region))).sort();
         color = d3.scaleOrdinal(regions, d3.schemeCategory10);
 
+        // --- minimal change: simple log ticks with currency formatting
         gx.call(d3.axisBottom(x).ticks(6).tickFormat(d => "$" + d3.format("~s")(d)));
 
         drawLegend();
+        initNote();
         drawScene(true);
         setupNavigation();
       });
 
       function drawLegend(){
-        const row = legendG.selectAll("g").data(regions, d => d);
-        const enter = row.enter().append("g").attr("transform", (d,i) => `translate(0, ${i*18})`);
-        enter.append("rect").attr("width", 12).attr("height", 12).attr("rx", 2).attr("ry", 2).attr("fill", d => color(d));
-        enter.append("text").attr("x", 18).attr("y", 10).attr("font-size", 12).text(d => d);
-        row.exit().remove();
+        legendG.selectAll("*").remove();
+        legendG.append("text").attr("x",0).attr("y",0).text("Region").attr("font-size",12).attr("font-weight","bold");
+        const row = legendG.selectAll("g.row").data(regions, d => d).enter()
+          .append("g").attr("class","row").attr("transform", (d,i) => `translate(0, ${20 + i*18})`);
+        row.append("rect").attr("width",12).attr("height",12).attr("fill", d => color(d));
+        row.append("text").attr("x",18).attr("y",10).attr("font-size",12).text(d => d);
+      }
+
+      function initNote(){
+        noteG.selectAll("*").remove();
+        noteG.append("text").attr("x",0).attr("y",0).text("Slide notes").attr("font-size",12).attr("font-weight","bold");
+        noteG.append("text").attr("id","note-text").attr("x",0).attr("y",18).attr("font-size",12).text(slideNotes[scene]);
+      }
+
+      function updateNote(){
+        d3.select("#note-text").text(slideNotes[scene]);
       }
 
       function tooltipText(d){
@@ -121,8 +148,7 @@
       function drawScene(initial=false){
         const def = metrics[scene];
         const extent = d3.extent(data, d => d[def.key]);
-        y.domain(def.invert ? [extent[1], extent[0]] : extent);
-
+        y.domain([extent[0], extent[1]]);
         gy.transition().duration(initial?0:700).call(d3.axisLeft(y).ticks(8));
         yLabel.text(def.label);
 
@@ -134,16 +160,15 @@
           .attr("cy", d => y(d[def.key]))
           .attr("fill", d=> color(d.region))
           .attr("opacity", 0.9);
-
         entered.append("title").text(d => tooltipText(d));
 
         sel.transition().duration(initial?0:700).ease(d3.easeCubicInOut)
           .attr("cx", d => x(d.healthExpPC))
           .attr("cy", d => y(d[def.key]));
-
         sel.select("title").text(d => tooltipText(d));
 
         sel.exit().remove();
+        updateNote();
         setButtons();
       }
 
