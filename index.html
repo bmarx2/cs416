@@ -14,6 +14,7 @@
     <p>
       This narrative visualization slideshow explores how public health spending per person relates to infant mortality, adult obesity, and life expectancy.
       <br> Use the buttons to change slides and the “Quadrants” button to overlay spending/outcome thresholds.
+      <br> Hover over a data point for more information about the country.
     </p>
     
     <div id="btns">
@@ -25,7 +26,7 @@
       <button id="toggle-quadrants">Quadrants</button>
     </div>
 
-    <svg id="chart" width="1120" height="600"></svg>
+    <svg id="chart" width="1200" height="620"></svg>
 
     <script>
       const metrics = [
@@ -47,7 +48,7 @@
       const svg = d3.select('#chart');
       const W = +svg.attr("width");
       const H = +svg.attr("height");
-      const RIGHT = 280; 
+      const RIGHT = 320; 
       const M = {top: 20, right: 20, bottom: 55, left: 80};
       const iw = W - M.left - M.right - RIGHT;
       const ih = H - M.top - M.bottom;
@@ -236,9 +237,9 @@
         const topY   = (0 + py) / 2;
         const botY   = (py + ih) / 2;
 
-        const goodTop = def.invert;
-        const topHealth = goodTop ? "Good Health"  : "Bad Health";
-        const botHealth = goodTop ? "Bad Health"   : "Good Health";
+        /* Updated: always show top = Good Health, bottom = Bad Health */
+        const topHealth = "Good Health";
+        const botHealth = "Bad Health";
 
         const labels = [
           { id:"tl", x:leftX,  y:topY, text:"Low Spending, "  + topHealth },
@@ -290,15 +291,92 @@
     </script>
 
     <h2>Essay</h2>
+    
+    <p><strong>Introduction</strong></p>
     <p>
-      Governments spend vast sums with the goal of improving people’s lives.
-      Some of that funding supports research or defense, but the portion devoted to public health can translate most directly into longer, healthier lives.
-      This visualization examines how government health spending per person relates to three outcomes: infant mortality, adult obesity, and life expectancy.
-      The patterns are not identical across metrics.
-      Infant mortality and life expectancy show clear improvements as spending rises, roughly following a logarithmic curve with big gains at low–moderate spending and diminishing returns thereafter.
-      Obesity is shaped by many additional forces—food environments, activity, and cultural habits—so spending alone is not a strong predictor.
-      In the data used here (WDI, 2016), a few outliers stand out and invite deeper investigation, such as Albania and Nauru, whose reported values diverge from regional peers.
+    This narrative visualization explores how governmental health expenditure per capita relates to the three public-health outcomes: infant mortality, adult obesity, and life expectancy.
+    Using World Bank WDI data, the interactive slide show presents three linked scatterplots that share a common x-axis (spending) and differ only by the outcome on the y-axis.
+    Countries are colored by region, and there is an optional quadrant overlay to help the reader compare patterns across slides and spot trends and outliers.
     </p>
+    
+    <p><strong>Messaging</strong></p>
+    <p>
+    The message trying to be conveyed with the narrative visualization is that higher government health spending is generally associated with better health.
+    There are clearer trends with an increase in population health and decrease in infant mortality with higher spending.
+    The relationship with obesity is weaker and more context dependent suggesting there are other forces such as food environments, culture and activity patterns shape obesity beyond health budgets alone.
+    The slideshow is meant to show the relationship from birth to death for the health of the people of these countries.
+    It shows that lifespan is better in some countries, but the quality of life or health while living could be improved despite increased spending in some cases.
+    </p>
+    
+    <p><strong>Narrative Structure</strong></p>
+    <p>
+    The narrative visualization uses an interactive slideshow.
+    The visualization follows the structure by opening on Slide 1 and provides clear controls with prev/next buttons to tell the story in order as well as slide number buttons to easily change and compare slides.
+    Each scene invites the viewer to drill down on each by using the tool tip to learn about each point, read the slide notes for some quick observations, or insert the quadrant lines to group countries spending and health together.
+    </p>
+    
+    <p><strong>Visual Structure</strong></p>
+    <p>
+    The visual structure for each scene is a scatterplot.
+    All scenes share an x-axis (log scale 10–10,000 USD) and color countries by region.
+    There are ticks on each axis, axis labels with units, and a right-hand legend to establish orientation.
+    The right sidebar also hosts a slide note that summarizes the key takeaway of each scene.
+    Consistent coloring and the fixed x-axis allow for easy understanding of each scene as well as comparison from scene to scene.
+    The structure highlights the viewer to understand the scene with quadrants that draw vertical and horizontal reference lines (spending threshold + outcome threshold) and place quadrant labels (“High/Low Spending, Good/Bad Health”) for easy understanding.
+    For infant mortality and obesity, the y-axis is inverted so “better health” appears higher, aligning all slides to the same “up = better” mental model.
+    The consistency in x-axis and coloring makes it easy to compare and transition to new slides.
+    The ease cubic transitions help the viewer track the same country when changing slides, reinforcing that the dataset stays constant while the y axis changes.
+    </p>
+    
+    <p><strong>Scenes</strong></p>
+    <p>
+    The order moves from an outcome where spending has a direct linkage (infant survival), to a complex outcome (obesity), and ends with the aggregate outcome people intuitively care about (lifespan).
+    The progression is meant to show the life cycle of humans from birth to death and try to explore interesting, sometimes needing more context, results.
+    Slide 1 is Infant Mortality vs. Spending (y inverted so lower mortality = higher on screen).
+    A clear log-shaped improvement.
+    Small increases in spending correlate with large drops in mortality.
+    Slide 2 is Adult Obesity vs. Spending (y inverted so lower obesity = higher).
+    This relationship is much noisier.
+    It provides nuance and shows governmental health expenditure is not the only reason for good/bad health.
+    Regional clusters show contrasting patterns with several East Asia & Pacific cases with relatively high spending yet higher obesity.
+    Slide 3 is Life Expectancy vs. Spending.
+    There is a strong positive association with diminishing returns at higher spending.
+    Additionally, there are some outliers with unusually high/low expectancy for a given spend that encourage further research.
+    </p>
+    
+    <p><strong>Annotations</strong></p>
+    <p>
+    The template for the annotations were a quadrant overlay with one vertical line at a spending threshold and one horizontal line at an outcome threshold and a brief slide note in the sidebar.
+    The template was used because the quadrants provide an immediate, easy to understand framing (“good/poor health” × “high/low spending”) without hiding the variability in the scatter.
+    Also, the annotations support the messaging with sidebar notes that keep the canvas uncluttered and make the message easy to take away along with the quadrants.
+    The annotations change scene to scene with the horizontal threshold updating by metric.
+    Slide 1 is 15 per 1,000 for infant mortality.
+    Slide 2 is 25% for obesity.
+    Slide 3 is 75 years for life expectancy.
+    These thresholds keep the definition of “good health” meaningful per slide.
+    The quadrant labels change so the upper half always denotes better health regardless of axis inversion.
+    </p>
+    
+    <p><strong>Parameters</strong></p>
+    <p>
+    Parameters are the scene/slide, quadrant on/off, the y-axis values/thresholds, and sidebar notes.
+    States are the three scenes.
+    The parameters define the state with the points moving to fit the data points and values along the new y-axis, quadrant threshold, and sidebar notes all while maintaining consistency along the x-axis and with coloring.
+    </p>
+    
+    <p><strong>Triggers</strong></p>
+    <p>
+    Triggers that change the scene are the Prev/Next buttons and 1/2/3 buttons change scene, the Quadrants button to turn on the quadrant, and the tooltip to provide more information about each country.
+    The controls are visible, labeled, and near the title and chart, providing clear affordances.
+    </p>
+    
+    <p><strong>Conclusion</strong></p>
+    <p>
+    Viewed together, the three slides show that public health budgets matter, most visibly for survival (infant mortality) and longevity (life expectancy).
+    The obesity slide shows that some outcomes are shaped by a broader ecosystem beyond health spending alone.
+    The visual consistency and simple interactivity lets viewers see clear trends, compare data with different insights, and leads to questions worth investigating with richer context about governmental health spending and their outcomes.
+    </p>
+
 
     <h3>Data & Source Files</h3>
     <p>
