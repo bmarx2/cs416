@@ -2,8 +2,10 @@
 <html>
   <head>
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://unpkg.com/d3-svg-annotation@2.5.1/d3-annotation.min.js"></script>
     <title>CS416 Narrative Visualization: Health Spending Slideshow</title>
+    <style>
+      body { font-family: sans-serif; text-align: center; }
+    </style>
   </head>
 
   <body>
@@ -22,39 +24,40 @@
       <button class="scene" data-scene="1">2</button>
       <button class="scene" data-scene="2">3</button>
       <button id="next">Next</button>
+      <button id="toggle-quadrants">Quadrants</button>
     </div>
 
-    <svg id="chart" width="900" height="600"></svg>
+    <svg id="chart" width="1000" height="600"></svg>
 
     <script>
       const metrics = [
-        { key: "infantMort", label: "Infant mortality (per 1,000 births)", invert: false },
-        { key: "obesityPct", label: "Adult obesity (%)", invert: false },
-        { key: "lifeExp",    label: "Life expectancy (years)", invert: false }
+        { key: "infantMort", label: "Infant mortality (per 1,000 births)", invert: true  },
+        { key: "obesityPct", label: "Adult obesity (%)",                  invert: false },
+        { key: "lifeExp",    label: "Life expectancy (years)",            invert: false }
       ];
       const slideNotes = ["Slide 1 annotation","Slide 2 annotation","Slide 3 annotation"];
-
-      const data_url = "WDI Narrative Vizualization Full Stats.csv";
+      const xTicks = [10,20,50,100,200,300,500,1000,2000,4000,8000,10000];
+      const yThresholds = { infantMort: 15, obesityPct: 25, lifeExp: 75 };
+      const dataUrl = "WDI Narrative Vizualization Full Stats.csv";
 
       const svg = d3.select('#chart');
       const W = +svg.attr("width");
       const H = +svg.attr("height");
       const RIGHT = 220;
       const M = {top: 20, right: 20, bottom: 55, left: 80};
-      const borderW = W - M.left - M.right - RIGHT;
-      const borderH = H - M.top - M.bottom;
-      const iw = borderW, ih = borderH;
+      const iw = W - M.left - M.right - RIGHT;
+      const ih = H - M.top - M.bottom;
 
-      const x = d3.scaleLog().range([0, borderW]);
-      const y = d3.scaleLinear().range([borderH, 0]);
+      const x = d3.scaleLog().range([0, iw]).domain([10, 10000]);
+      const y = d3.scaleLinear();
       
       const g  = svg.append("g").attr("transform", `translate(${M.left}, ${M.top})`);
-      const gx = g.append("g").attr("transform", `translate(0, ${borderH})`);
+      const gx = g.append("g").attr("transform", `translate(0, ${ih})`);
       const gy = g.append("g");
       const dotsG = g.append("g");
-      const annG  = g.append("g");
+      const quadsG = g.append("g");
 
-      const sidebarX = M.left + borderW + 24;
+      const sidebarX = M.left + iw + 24;
       const legendG = svg.append("g").attr("transform", `translate(${sidebarX}, ${M.top})`);
       const noteG   = svg.append("g").attr("transform", `translate(${sidebarX}, ${M.top + 20 + 18*8})`);
 
@@ -65,6 +68,9 @@
       let scene = 0;
       let data = [];
       let regions = [];
+      let xSplit = 500;
+      let ySplit = null;
+      let quadrantsOn = false;
 
       const COL = {
         year: "Time",
@@ -77,7 +83,7 @@
         obesity: "Male & Female Obesity Rate"
       };
       
-      d3.csv(data_url, d3.autoType).then(rows => {
+      d3.csv(dataUrl, d3.autoType).then(rows => {
         data = rows
           .filter(d => +d[COL.year] === 2016)
           .map(d => ({
@@ -92,15 +98,12 @@
           }))
           .filter(d => d.region && d.healthExpPC > 0 && [d.lifeExp, d.infantMort, d.obesityPct].every(Number.isFinite));
 
-        const xExtent = d3.extent(data, d => d.healthExpPC);
-        const minX = xExtent[0], maxX = xExtent[1];
-        const lowerPad = Math.pow(10, Math.floor(Math.log10(minX)));
-        x.domain([Math.min(10, lowerPad), maxX]).nice();
-
         regions = Array.from(new Set(data.map(d => d.region))).sort();
         color = d3.scaleOrdinal(regions, d3.schemeCategory10);
 
-        gx.call(d3.axisBottom(x).ticks(6).tickFormat(d => "$" + d3.format("~s")(d)));
+        gx.call(d3.axisBottom(x)
+          .tickValues(xTicks.filter(v => v >= x.domain()[0] && v <= x.domain()[1]))
+          .tickFormat(d => "$" + d3.format("~s")(d)));
 
         drawLegend();
         initNote();
@@ -141,7 +144,8 @@
       function drawScene(initial=false){
         const def = metrics[scene];
         const extent = d3.extent(data, d => d[def.key]);
-        y.domain([extent[0], extent[1]]);
+        y.domain([extent[0], extent[1]]).nice();
+        y.range(def.invert ? [0, ih] : [ih, 0]);
         gy.transition().duration(initial?0:700).call(d3.axisLeft(y).ticks(8));
         yLabel.text(def.label);
 
@@ -162,20 +166,53 @@
 
         sel.exit().remove();
 
-        drawThreeExampleAnnotations();
+        drawQuadrants();
         updateNote();
         setButtons();
       }
 
-      function drawThreeExampleAnnotations(){
-        annG.selectAll("*").remove();
-        const annotations = [
-          { type: d3.annotationCalloutCircle, note: { label: "Circle 1" }, x: 140, y: 140, dx: 60,  dy: -40, subject: { radius: 32, radiusPadding: 6 } },
-          { type: d3.annotationCalloutCircle, note: { label: "Circle 2" }, x: 360, y: 300, dx: -80, dy: -50, subject: { radius: 28, radiusPadding: 6 } },
-          { type: d3.annotationCalloutCircle, note: { label: "Circle 3" }, x: 600, y: 200, dx: -70, dy: 60,  subject: { radius: 35, radiusPadding: 6 } }
+      function drawQuadrants(){
+        quadsG.selectAll("*").remove();
+        if (!quadrantsOn) return;
+
+        const def = metrics[scene];
+        const splitYVal = ySplit == null ? yThresholds[def.key] : ySplit;
+
+        const px = x(xSplit);
+        const py = y(splitYVal);
+
+        quadsG.append("line").attr("x1", px).attr("x2", px).attr("y1", 0).attr("y2", ih).attr("stroke", "#333").attr("stroke-width", 1);
+        quadsG.append("line").attr("x1", 0).attr("x2", iw).attr("y1", py).attr("y2", py).attr("stroke", "#333").attr("stroke-width", 1);
+
+        const leftX  = (0 + px) / 2;
+        const rightX = (px + iw) / 2;
+        const topY   = (0 + py) / 2;
+        const botY   = (py + ih) / 2;
+
+        const topHealth  = def.invert ? "bad_health"  : "good_health";
+        const botHealth  = def.invert ? "good_health" : "bad_health";
+
+        const labels = [
+          { x: leftX,  y: topY, text: "low_spending, "  + topHealth },
+          { x: rightX, y: topY, text: "high_spending, " + topHealth },
+          { x: leftX,  y: botY, text: "low_spending, "  + botHealth },
+          { x: rightX, y: botY, text: "high_spending, " + botHealth }
         ];
-        const make = d3.annotation().type(d3.annotationCalloutCircle).annotations(annotations);
-        annG.call(make);
+
+        quadsG.selectAll("text.quad").data(labels).enter()
+          .append("text")
+          .attr("class", "quad")
+          .attr("x", d => d.x)
+          .attr("y", d => d.y)
+          .attr("text-anchor", "middle")
+          .attr("font-size", 12)
+          .text(d => d.text);
+      }
+
+      function setSplits(xDollar, yValue){
+        xSplit = xDollar;
+        ySplit = yValue;
+        drawQuadrants();
       }
 
       function gotoScene(s){
@@ -192,6 +229,10 @@
         document.getElementById("prev").addEventListener("click", () => gotoScene(scene-1));
         document.getElementById("next").addEventListener("click", () => gotoScene(scene+1));
         document.querySelectorAll(".scene").forEach(b => b.addEventListener("click", e => gotoScene(+e.currentTarget.dataset.scene)));
+        document.getElementById("toggle-quadrants").addEventListener("click", () => {
+          quadrantsOn = !quadrantsOn;
+          drawQuadrants();
+        });
         setButtons();
       }
     </script>
