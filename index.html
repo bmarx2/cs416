@@ -2,6 +2,7 @@
 <html>
   <head>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/d3-svg-annotation@2.5.1/d3-annotation.min.js"></script>
     <title>CS416 Narrative Visualization: Health Spending Slideshow</title>
   </head>
 
@@ -31,11 +32,7 @@
         { key: "obesityPct", label: "Adult obesity (%)", invert: false },
         { key: "lifeExp",    label: "Life expectancy (years)", invert: false }
       ];
-      const slideNotes = [
-        "Slide 1 annotation",
-        "Slide 2 annotation",
-        "Slide 3 annotation"
-      ];
+      const slideNotes = ["Slide 1 annotation","Slide 2 annotation","Slide 3 annotation"];
 
       const data_url = "WDI Narrative Vizualization Full Stats.csv";
 
@@ -55,16 +52,14 @@
       const gx = g.append("g").attr("transform", `translate(0, ${borderH})`);
       const gy = g.append("g");
       const dotsG = g.append("g");
+      const annG  = g.append("g");
 
       const sidebarX = M.left + borderW + 24;
       const legendG = svg.append("g").attr("transform", `translate(${sidebarX}, ${M.top})`);
       const noteG   = svg.append("g").attr("transform", `translate(${sidebarX}, ${M.top + 20 + 18*8})`);
 
-      const xLabel = g.append("text")
-        .attr("x", iw/2).attr("y", ih + 40).attr("text-anchor", "middle")
-        .text("Health expenditure per capita (US$)");
-      const yLabel = g.append("text")
-        .attr("transform", "rotate(-90)").attr("x", -ih/2).attr("y", -55).attr("text-anchor", "middle");
+      const xLabel = g.append("text").attr("x", iw/2).attr("y", ih + 40).attr("text-anchor", "middle").text("Health expenditure per capita (US$)");
+      const yLabel = g.append("text").attr("transform", "rotate(-90)").attr("x", -ih/2).attr("y", -55).attr("text-anchor", "middle");
       
       let color = null;
       let scene = 0;
@@ -97,7 +92,6 @@
           }))
           .filter(d => d.region && d.healthExpPC > 0 && [d.lifeExp, d.infantMort, d.obesityPct].every(Number.isFinite));
 
-        // --- minimal change: pad and nice the log domain so very small values (e.g., $12) aren't pinned at 0
         const xExtent = d3.extent(data, d => d.healthExpPC);
         const minX = xExtent[0], maxX = xExtent[1];
         const lowerPad = Math.pow(10, Math.floor(Math.log10(minX)));
@@ -106,7 +100,6 @@
         regions = Array.from(new Set(data.map(d => d.region))).sort();
         color = d3.scaleOrdinal(regions, d3.schemeCategory10);
 
-        // --- minimal change: simple log ticks with currency formatting
         gx.call(d3.axisBottom(x).ticks(6).tickFormat(d => "$" + d3.format("~s")(d)));
 
         drawLegend();
@@ -168,8 +161,21 @@
         sel.select("title").text(d => tooltipText(d));
 
         sel.exit().remove();
+
+        drawThreeExampleAnnotations();
         updateNote();
         setButtons();
+      }
+
+      function drawThreeExampleAnnotations(){
+        annG.selectAll("*").remove();
+        const annotations = [
+          { type: d3.annotationCalloutCircle, note: { label: "Circle 1" }, x: 140, y: 140, dx: 60,  dy: -40, subject: { radius: 32, radiusPadding: 6 } },
+          { type: d3.annotationCalloutCircle, note: { label: "Circle 2" }, x: 360, y: 300, dx: -80, dy: -50, subject: { radius: 28, radiusPadding: 6 } },
+          { type: d3.annotationCalloutCircle, note: { label: "Circle 3" }, x: 600, y: 200, dx: -70, dy: 60,  subject: { radius: 35, radiusPadding: 6 } }
+        ];
+        const make = d3.annotation().type(d3.annotationCalloutCircle).annotations(annotations);
+        annG.call(make);
       }
 
       function gotoScene(s){
